@@ -40,7 +40,7 @@ const doAddReview = function(req, res, location) {
       reviewText: req.body.reviewText
     });
     location.save(function(err, location) {
-      var thisReview;
+      let thisReview;
       if (err) {
         sendJSONresponse(res, 400, err);
       } else {
@@ -97,7 +97,7 @@ module.exports.reviewsUpdateOne = function(req, res) {
     .select('reviews')
     .exec(
       function(err, location) {
-        var thisReview;
+        let thisReview;
         if (!location) {
           sendJSONresponse(res, 404, {
             "message": "locationid not found"
@@ -144,7 +144,7 @@ module.exports.reviewsReadOne = function(req, res) {
       .exec(
         function(err, location) {
           console.log(location);
-          var response, review;
+          let response, review;
           if (!location) {
             sendJSONresponse(res, 404, {
               "message": "locationid not found"

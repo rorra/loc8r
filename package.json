@@ -8,9 +8,11 @@
   "dependencies": {
     "cookie-parser": "^1.4.3",
     "express": "^4.16.4",
+    "geolib": "^2.0.24",
     "http-errors": "^1.7.1",
     "mongoose": "^5.3.12",
     "morgan": "^1.9.1",
-    "pug": "^2.0.3"
+    "pug": "^2.0.3",
+    "request": "^2.88.0"
   }
 }

@@ -1,27 +1,11 @@
 const mongoose = require('mongoose');
 const Loc = mongoose.model('Location');
+const geolib = require('geolib');
 
 const sendJSONresponse = function(res, status, content) {
   res.status(status);
   res.json(content);
 };
-
-const theEarth = (function() {
-  const earthRadius = 6371;
-
-  const getDistanceFromRads = function(rads) {
-    return parseFloat(rads * earthRadius);
-  };
-
-  const getRadsFromDistance = function(distance) {
-    return parseFloat(distance / earthRadius);
-  };
-
-  return {
-    getDistanceFromRads: getDistanceFromRads,
-    getRadsFromDistance: getRadsFromDistance
-  };
-})();
 
 /* GET list of locations */
 module.exports.locationsListByDistance = function(req, res) {
@@ -32,11 +16,6 @@ module.exports.locationsListByDistance = function(req, res) {
     type: "Point",
     coordinates: [lng, lat]
   };
-  const geoOptions = {
-    spherical: true,
-    maxDistance: theEarth.getRadsFromDistance(maxDistance),
-    num: 10
-  };
   if (!lng || !lat || !maxDistance) {
     console.log('locationsListByDistance missing params');
     sendJSONresponse(res, 404, {
@@ -44,30 +23,42 @@ module.exports.locationsListByDistance = function(req, res) {
     });
     return;
   }
-  Loc.geoNear(point, geoOptions, function(err, results, stats) {
+  Loc.
+    aggregate([{
+      $geoNear: {
+        near: point,
+        maxDistance: maxDistance,
+        key: "coords",
+        distanceField: "distance",
+        spherical: true,
+        query: 'find ( )'
+      }
+    }]).exec((err, results) => {
     let locations;
     console.log('Geo Results', results);
-    console.log('Geo stats', stats);
     if (err) {
       console.log('geoNear error:', err);
       sendJSONresponse(res, 404, err);
     } else {
-      locations = buildLocationList(req, res, results, stats);
+      locations = buildLocationList(req, res, results, lat, lng);
       sendJSONresponse(res, 200, locations);
     }
   });
 };
 
-const buildLocationList = function(req, res, results, stats) {
+const buildLocationList = function(req, res, results, lat, lng) {
   const locations = [];
   results.forEach(function(doc) {
+    const origin = { latitude: lat, longitude: lng };
+    const destination = { latitude: doc.coords[1], longitude: doc.coords[0]};
+
     locations.push({
-      distance: theEarth.getDistanceFromRads(doc.dis),
-      name: doc.obj.name,
-      address: doc.obj.address,
-      rating: doc.obj.rating,
-      facilities: doc.obj.facilities,
-      _id: doc.obj._id
+      distance: geolib.getDistance(origin, destination),
+      name: doc.name,
+      address: doc.address,
+      rating: doc.rating,
+      facilities: doc.facilities,
+      _id: doc._id
     });
   });
   return locations;
@@ -182,7 +173,7 @@ module.exports.locationsUpdateOne = function(req, res) {
 
 /* DELETE /api/locations/:locationid */
 module.exports.locationsDeleteOne = function(req, res) {
-  var locationid = req.params.locationid;
+  const locationid = req.params.locationid;
   if (locationid) {
     Loc
       .findByIdAndRemove(locationid)
